@@ -10,7 +10,7 @@ import { promisify } from 'node:util';
 import { pathToFileURL } from 'node:url';
 import { DATA, MEDIA } from './paths.ts';
 import { createServer } from './mcp.ts';
-import { mediaPath } from './media.ts';
+import { mediaPath, extractMediaPath } from './media.ts';
 
 const run = promisify(execFile);
 const KEYS: Record<string, string[]> = {
@@ -252,7 +252,10 @@ export async function execute(a: { id: number; kind: string; title: string; draf
   } else if (a.kind === 'publish') {
     const dir = path.join(MEDIA, 'published', `approval-${a.id}`);
     fs.mkdirSync(dir, { recursive: true });
-    for (const f of [d.video, d.thumbnail, d.captions].filter(Boolean)) fs.copyFileSync(mediaPath(f), path.join(dir, path.basename(f)));
+    for (const k of ['video', 'thumbnail', 'captions'].filter(k => d[k])) {
+      const f = extractMediaPath(d[k], `draft.${k}`);
+      fs.copyFileSync(mediaPath(f), path.join(dir, path.basename(f)));
+    }
     result = `final files copied to ${path.relative(path.dirname(MEDIA), dir)} ready to upload`;
   } else {
     result = 'recorded in data/outbox.jsonl (no live executor for this kind/integration; mock mode)';
@@ -263,7 +266,7 @@ export async function execute(a: { id: number; kind: string; title: string; draf
 }
 
 // ---------- Entry point ----------
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) { // argv[1] is unset under node -e
   const name = process.argv[2];
   const tools = TOOLS[name];
   if (!tools) { console.error(`usage: integrations.ts <${Object.keys(TOOLS).join('|')}>`); process.exit(1); }

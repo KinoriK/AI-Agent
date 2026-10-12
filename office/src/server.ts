@@ -41,7 +41,8 @@ tool('media_probe', 'Duration, resolution and audio presence of a media file.', 
 tool('media_frame', 'Export a still frame as PNG (default: middle of the clip) so you can look at it with Read.', { input: file, at: z.number().optional() }, a => media.frame(a.input, a.at));
 tool('media_cut', 'Rough cut: trim a clip from start (seconds) for duration (seconds). Output goes to media/out.',
   { input: file, start: z.number().default(0), duration: z.number().optional(), out: z.string().optional() }, a => media.cut(a.input, a.start, a.duration, a.out));
-tool('media_transcribe', 'Transcribe a clip to an .srt caption file with Whisper (API, local, or mock mode).', { input: file }, a => media.transcribe(a.input));
+tool('media_transcribe', 'Transcribe a clip to an .srt caption file with Whisper (API, local, or mock mode).',
+  { input: file, language: z.string().optional().describe('ISO-639-1 code like "en" or "ko" if known; otherwise Whisper guesses') }, a => media.transcribe(a.input, a.language));
 tool('media_burn_captions', 'Burn an .srt into the video with ffmpeg in house style.', { input: file, srt: file, out: z.string().optional() }, a => media.burnCaptions(a.input, a.srt, a.out));
 tool('media_thumbnail', 'Make a 1280x720 noir-style thumbnail from a frame of the video with a title.',
   { input: file, title: z.string(), at: z.number().optional(), out: z.string().optional() }, a => media.thumbnail(a.input, a.title, a.at, a.out));

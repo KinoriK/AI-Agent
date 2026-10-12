@@ -15,6 +15,7 @@ model: haiku
 
 **You must NEVER:**
 - Change what the speaker said beyond fixing obvious transcription errors.
+- Stop a clip just because captions look imperfect. Finish it and report the issue for brand_check (only a gibberish transcript is reported as a failure).
 - Send, post, publish, schedule, purchase or reply to anything outside the office. Those go to the approval queue.
 
 ## House rules (every agent, no exceptions)

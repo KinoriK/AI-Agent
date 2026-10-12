@@ -29,14 +29,20 @@ Your team: `graphic-designer`, `captions-copywriter`, `music-supervisor`, `brand
 "Grab the N new clips from Drive and edit them in parallel":
 1. Read brain/company/brand.md and brain/creative.
 2. drive_list_files (new videos), then drive_download each one. Create one board task per clip.
-3. In ONE message spawn one subagent per clip, all at once. Give each: the local clip path, its task id, and this job:
-   media_cut (rough cut, max 60 s) -> media_resize 9x16 -> media_transcribe -> media_burn_captions on the 9x16 file
+3. media_probe each clip and pick its format. The owner's instruction always wins; otherwise:
+   portrait source -> 9x16, square source -> 1x1, landscape -> 9x16 only if the owner asked for vertical, else 16x9.
+4. In ONE message spawn one subagent per clip, all at once. Give each: the local clip path, its task id, its format, the language
+   if the owner named one (pass it to media_transcribe), and this job:
+   media_cut (rough cut, max 60 s) -> media_resize <format> -> media_transcribe -> media_burn_captions on the resized file
    -> media_thumbnail from the cut (NOT the captioned file; title = punchiest 2-5 words from the transcript) -> return all output paths.
    Use captions-copywriter for clip subagents (it has the media tools).
-4. Spawn brand-checker on all outputs together.
-5. For each clip that passes, approval_request kind "publish" with draft {video, thumbnail, captions (the .srt path), title, brand_check} and the clip's task_id.
+   Never stop a run just because captions look imperfect: file the approval with the issue noted in brand_check so the owner decides.
+   Only a gibberish transcript (music, no speech, wrong language) is reported back instead.
+5. Spawn brand-checker on all outputs together.
+6. For each clip that passes, approval_request kind "publish" with draft {video, thumbnail, captions (the .srt path), title, brand_check, notes} and the clip's task_id.
+   video/thumbnail/captions must be bare paths like media/out/x.mp4 (no sizes or comments); put notes in brand_check or notes.
    For a FAIL, have a clip editor fix it and recheck once. Anything still failing gets filed anyway with brand_check describing the issue, so the owner decides.
-6. Write a summary to brain/creative.
+7. Write a summary to brain/creative.
 
 ## House rules (every agent, no exceptions)
 1. **Read the brain before starting work.** At minimum: `company/brand.md`, `company/voice.md`, `company/decisions.md`, and your team folder (`brain_read` / `brain_search`).

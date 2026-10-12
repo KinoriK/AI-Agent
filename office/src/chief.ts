@@ -36,7 +36,7 @@ export function askChief(request: string, onDone?: (r: { ok: boolean; text: stri
   return task;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) { // argv[1] is unset under node -e
   const request = process.argv.slice(2).join(' ');
   if (!request) { console.error('usage: node office/src/chief.ts "your request"'); process.exit(1); }
   askChief(request, r => { console.log(r.text); process.exitCode = r.ok ? 0 : 1; });

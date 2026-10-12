@@ -16,6 +16,12 @@ export function mediaPath(p: string) {
   if (!abs.startsWith(MEDIA + path.sep)) throw new Error(`path must be inside media/: ${p}`);
   return abs;
 }
+// Agents sometimes write "media/out/clip-1.mp4 (vertical, 18 s)" or an absolute path; keep just the media/... part.
+export function extractMediaPath(v: unknown, field = 'path') {
+  const m = typeof v === 'string' && v.match(/(?:^|\/)(media\/[^\s"'()]+\.[a-z0-9]{2,4})/i);
+  if (!m) throw new Error(`${field}: no media/... file path found in ${JSON.stringify(v)}`);
+  return m[1];
+}
 const relOut = (p: string) => path.relative(ROOT, p);
 function outFor(input: string, step: string, ext = '.mp4', out?: string) {
   if (out) return mediaPath(out);
@@ -39,7 +45,7 @@ export async function cut(input: string, start = 0, duration?: number, out?: str
   return { output: relOut(dst), ...(await probe(relOut(dst))) };
 }
 
-const ts = (s: number) => new Date(Math.max(0, s) * 1000).toISOString().slice(11, 23).replace('.', ',');
+const ts = (s: number) => new Date(Math.round(Math.max(0, s) * 1000)).toISOString().slice(11, 23).replace('.', ',');
 export function textToSrt(text: string, duration: number, wordsPerCue = 4) {
   const words = text.trim().split(/\s+/).filter(Boolean);
   const cues = [];
@@ -48,8 +54,27 @@ export function textToSrt(text: string, duration: number, wordsPerCue = 4) {
   return cues.map((c, i) => `${i + 1}\n${ts(i * step)} --> ${ts((i + 1) * step - 0.05)}\n${c}\n`).join('\n');
 }
 
+// Whisper word timings -> short cues: max 5 words, new cue after a pause > 0.6 s or sentence-ending punctuation.
+export function wordsToSrt(words: { word: string; start: number; end: number }[], maxWords = 5) {
+  const cues: (typeof words)[] = [];
+  let cur: typeof words = [];
+  for (const w of words) {
+    const prev = cur.at(-1);
+    if (prev && (cur.length >= maxWords || w.start - prev.end > 0.6 || /[.?!]$/.test(prev.word.trim()))) { cues.push(cur); cur = []; }
+    cur.push(w);
+  }
+  if (cur.length) cues.push(cur);
+  return cues.map((c, i) => `${i + 1}\n${ts(c[0].start)} --> ${ts(c.at(-1)!.end)}\n${c.map(w => w.word.trim()).join(' ')}\n`).join('\n');
+}
+// Fallback when the API gives no word timings: spread each segment's words evenly over the segment.
+const segmentsToSrt = (segs: { start: number; end: number; text: string }[]) => wordsToSrt(segs.flatMap(s => {
+  const w = s.text.trim().split(/\s+/).filter(Boolean), step = (s.end - s.start) / Math.max(w.length, 1);
+  return w.map((word, i) => ({ word, start: s.start + i * step, end: s.start + (i + 1) * step - 0.05 }));
+}));
+
 // Whisper: OpenAI API if OPENAI_API_KEY, else local `whisper` CLI, else MOCK (sidecar transcript .txt).
-export async function transcribe(input: string) {
+// language: optional ISO-639-1 hint ("en", "ko") so Whisper doesn't guess wrong on short clips.
+export async function transcribe(input: string, language?: string) {
   const src = mediaPath(input);
   const srt = outFor(input, 'captions', '.srt');
   const { duration } = await probe(input);
@@ -60,13 +85,21 @@ export async function transcribe(input: string) {
     const form = new FormData();
     form.append('file', new Blob([fs.readFileSync(audio)]), 'audio.mp3');
     form.append('model', 'whisper-1');
-    form.append('response_format', 'srt');
+    // srt format returns short clips as one giant cue; word timings let us build readable cues ourselves.
+    form.append('response_format', 'verbose_json');
+    form.append('timestamp_granularities[]', 'word');
+    if (language) form.append('language', language);
     const r = await fetch('https://api.openai.com/v1/audio/transcriptions', { method: 'POST', headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` }, body: form });
     if (!r.ok) throw new Error(`whisper api ${r.status}: ${await r.text()}`);
-    fs.writeFileSync(srt, await r.text());
+    const j = await r.json();
+    // whisper-1 strips punctuation from words; borrow it back from the full text when the tokens line up.
+    const toks = String(j.text ?? '').trim().split(/\s+/);
+    if (j.words?.length === toks.length) j.words.forEach((w: any, i: number) => (w.word = toks[i]));
+    fs.writeFileSync(srt, j.words?.length ? wordsToSrt(j.words) : j.segments?.length ? segmentsToSrt(j.segments) : textToSrt(j.text ?? '', duration));
     engine = 'whisper-api';
   } else if (await run('whisper', ['--help']).then(() => true, () => false)) {
-    await run('whisper', [src, '--model', process.env.WHISPER_MODEL ?? 'base', '--output_format', 'srt', '--output_dir', path.dirname(srt)], { maxBuffer: 1 << 26 });
+    await run('whisper', [src, '--model', process.env.WHISPER_MODEL ?? 'base', '--output_format', 'srt', '--output_dir', path.dirname(srt),
+      '--word_timestamps', 'True', '--max_words_per_line', '5', ...(language ? ['--language', language] : [])], { maxBuffer: 1 << 26 });
     fs.renameSync(path.join(path.dirname(srt), path.basename(src).replace(/\.[^.]+$/, '.srt')), srt);
     engine = 'whisper-local';
   } else {

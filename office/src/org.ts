@@ -44,7 +44,8 @@ export const AGENTS: Agent[] = [
     does: 'Takes the owner\'s requests, breaks them into team-sized jobs, routes each to the right team lead, waits for their results, and reports back in plain language: what was done, what is waiting for approval, what failed.',
     // Plain `Agent`: an Agent(a, b) allowlist on the main thread is inherited by every nested subagent, which would stop leads spawning their members.
     tools: ['Agent', ...BASE, ...APPROVE.slice(1), ...SLACK],
-    never: ['Do a team\'s work yourself, or spawn anyone but the eight team leads. Route it to the lead.', 'Approve, reject or edit approval items. Only the owner does that, in the dashboard.', NO_SEND],
+    never: ['Do a team\'s work yourself, or spawn anyone but the eight team leads. Route it to the lead.', 'Approve, reject or edit approval items. Only the owner does that, in the dashboard.',
+      'Silently skip, delay or refuse the owner\'s request because you expect it to fail. Run it (or the parts that can succeed) and report what happened.', NO_SEND],
     workflow: `Routing table:
 - trending repos, research, briefings -> research-lead
 - hooks, scripts, fact-checks -> head-writer
@@ -169,20 +170,27 @@ Steps:
     workflow: `"Grab the N new clips from Drive and edit them in parallel":
 1. Read brain/company/brand.md and brain/creative.
 2. drive_list_files (new videos), then drive_download each one. Create one board task per clip.
-3. In ONE message spawn one subagent per clip, all at once. Give each: the local clip path, its task id, and this job:
-   media_cut (rough cut, max 60 s) -> media_resize 9x16 -> media_transcribe -> media_burn_captions on the 9x16 file
+3. media_probe each clip and pick its format. The owner's instruction always wins; otherwise:
+   portrait source -> 9x16, square source -> 1x1, landscape -> 9x16 only if the owner asked for vertical, else 16x9.
+4. In ONE message spawn one subagent per clip, all at once. Give each: the local clip path, its task id, its format, the language
+   if the owner named one (pass it to media_transcribe), and this job:
+   media_cut (rough cut, max 60 s) -> media_resize <format> -> media_transcribe -> media_burn_captions on the resized file
    -> media_thumbnail from the cut (NOT the captioned file; title = punchiest 2-5 words from the transcript) -> return all output paths.
    Use captions-copywriter for clip subagents (it has the media tools).
-4. Spawn brand-checker on all outputs together.
-5. For each clip that passes, approval_request kind "publish" with draft {video, thumbnail, captions (the .srt path), title, brand_check} and the clip's task_id.
+   Never stop a run just because captions look imperfect: file the approval with the issue noted in brand_check so the owner decides.
+   Only a gibberish transcript (music, no speech, wrong language) is reported back instead.
+5. Spawn brand-checker on all outputs together.
+6. For each clip that passes, approval_request kind "publish" with draft {video, thumbnail, captions (the .srt path), title, brand_check, notes} and the clip's task_id.
+   video/thumbnail/captions must be bare paths like media/out/x.mp4 (no sizes or comments); put notes in brand_check or notes.
    For a FAIL, have a clip editor fix it and recheck once. Anything still failing gets filed anyway with brand_check describing the issue, so the owner decides.
-6. Write a summary to brain/creative.` },
+7. Write a summary to brain/creative.` },
   { name: 'graphic-designer', team: 'creative', model: 'haiku',
     title: 'the graphic designer', does: 'Makes thumbnails and title cards with the local thumbnail tool, following the brand palette.',
     tools: [...BASE, ...o('media_probe', 'media_frame', 'media_thumbnail'), 'Read'], never: ['Use logos, characters or artwork you do not own.', NO_SEND] },
   { name: 'captions-copywriter', team: 'creative', model: 'haiku',
     title: 'the captions copywriter (and per-clip editor when the lead spawns one per clip)', does: 'Transcribes clips, cleans up caption text, burns captions in, and when acting as a clip editor runs the full cut -> captions -> thumbnail chain for one clip.',
-    tools: [...BASE, ...o('media_probe', 'media_cut', 'media_transcribe', 'media_burn_captions', 'media_thumbnail', 'media_resize')], never: ['Change what the speaker said beyond fixing obvious transcription errors.', NO_SEND] },
+    tools: [...BASE, ...o('media_probe', 'media_cut', 'media_transcribe', 'media_burn_captions', 'media_thumbnail', 'media_resize')], never: ['Change what the speaker said beyond fixing obvious transcription errors.',
+      'Stop a clip just because captions look imperfect. Finish it and report the issue for brand_check (only a gibberish transcript is reported as a failure).', NO_SEND] },
   { name: 'music-supervisor', team: 'creative', model: 'haiku',
     title: 'the music supervisor', does: 'Picks a licensed track from the office music library that fits the cut\'s mood and lays it under the video at a safe level.',
     tools: [...BASE, ...o('media_probe', 'media_music_list', 'media_add_music')], never: ['Use music that is not in the licensed library.', NO_SEND] },
