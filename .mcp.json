@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "office":    { "command": "node", "args": ["office/src/server.ts"] },
+    "github":    { "command": "node", "args": ["office/src/integrations.ts", "github"] },
+    "drive":     { "command": "node", "args": ["office/src/integrations.ts", "drive"] },
+    "calendar":  { "command": "node", "args": ["office/src/integrations.ts", "calendar"] },
+    "slack":     { "command": "node", "args": ["office/src/integrations.ts", "slack"] },
+    "gmail":     { "command": "node", "args": ["office/src/integrations.ts", "gmail"] },
+    "shop":      { "command": "node", "args": ["office/src/integrations.ts", "shop"] },
+    "analytics": { "command": "node", "args": ["office/src/integrations.ts", "analytics"] }
+  }
+}

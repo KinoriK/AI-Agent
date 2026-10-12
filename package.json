@@ -1,0 +1,20 @@
+{
+  "name": "agent-hq",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "office": "node office/src/server.ts",
+    "test": "node --test office/test/*.test.ts",
+    "dashboard": "node dashboard/server/index.ts",
+    "dev:web": "vite dashboard/web",
+    "build": "vite build dashboard/web",
+    "start": "npm run build && npm run dashboard"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "zod": "^4.6.6"
+  }
+}

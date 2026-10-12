@@ -1,0 +1,7 @@
+node_modules/
+data/
+media/out/
+media/work/
+dashboard/web/dist/
+.env
+.claude/settings.local.json
