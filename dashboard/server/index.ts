@@ -95,4 +95,11 @@ setInterval(() => {
   if (rows.length) { cursor = rows[rows.length - 1].id; broadcast({ kind: 'events', events: rows }); }
 }, 250);
 
+const onListenError = (e: any) => {
+  if (e.code !== 'EADDRINUSE') throw e;
+  console.error(`Port ${PORT} is already in use (an earlier dashboard, or another app). Stop it, or run: PORT=${PORT + 10} npm run dashboard`);
+  process.exit(1);
+};
+server.on('error', onListenError);
+wss.on('error', onListenError); // ws re-emits the http server's listen error
 server.listen(PORT, HOST, () => console.log(`Agent HQ dashboard on http://${HOST}:${PORT}`));
