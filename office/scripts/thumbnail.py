@@ -7,7 +7,8 @@ W, H = 1280, 720
 GOLD, AMBER, INK = (201, 162, 39), (255, 176, 0), (10, 10, 12)
 
 img = ImageOps.fit(Image.open(src).convert('RGB'), (W, H))
-img = ImageEnhance.Brightness(ImageEnhance.Contrast(img).enhance(1.3)).enhance(0.55)
+img = ImageEnhance.Color(img).enhance(0.35)  # noir: drain most of the colour
+img = ImageEnhance.Brightness(ImageEnhance.Contrast(img).enhance(1.35)).enhance(0.5)
 d = ImageDraw.Draw(img, 'RGBA')
 d.rectangle([0, H - 260, W, H], fill=(*INK, 200))
 for inset, width in ((18, 4), (32, 1)):

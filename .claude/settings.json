@@ -1,40 +1,141 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "enableAllProjectMcpServers": true,
-  "env": { "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "3" },
+  "env": {
+    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "3",
+    "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS": "1"
+  },
   "permissions": {
     "allow": [
       "mcp__office",
-      "mcp__github__search_repositories", "mcp__github__get_repo", "mcp__github__get_readme",
-      "mcp__drive__drive_list_files", "mcp__drive__drive_download",
-      "mcp__calendar__calendar_list_events", "mcp__calendar__calendar_free_slots",
-      "mcp__gmail__gmail_search", "mcp__gmail__gmail_read", "mcp__gmail__gmail_create_draft",
-      "mcp__shop", "mcp__analytics",
-      "WebSearch", "WebFetch",
-      "Bash(npm test:*)", "Bash(npm run build:*)", "Bash(node --test:*)", "Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)"
+      "mcp__github__search_repositories",
+      "mcp__github__get_repo",
+      "mcp__github__get_readme",
+      "mcp__drive__drive_list_files",
+      "mcp__drive__drive_download",
+      "mcp__calendar__calendar_list_events",
+      "mcp__calendar__calendar_free_slots",
+      "mcp__gmail__gmail_search",
+      "mcp__gmail__gmail_read",
+      "mcp__gmail__gmail_create_draft",
+      "mcp__shop",
+      "mcp__analytics",
+      "WebSearch",
+      "WebFetch",
+      "Bash(npm test:*)",
+      "Bash(npm run build:*)",
+      "Bash(node --test:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)"
     ],
     "ask": [
       "mcp__slack__slack_notify"
     ],
     "deny": [
-      "Bash(git push:*)", "Bash(curl:*)", "Bash(wget:*)", "Bash(npm publish:*)", "Bash(yarn publish:*)", "Bash(pnpm publish:*)",
-      "Bash(gh:*)", "Bash(ssh:*)", "Bash(scp:*)", "Bash(rsync:*)", "Bash(nc:*)", "Bash(sendmail:*)", "Bash(mail:*)",
-      "Bash(stripe:*)", "Bash(vercel:*)", "Bash(netlify:*)", "Bash(flyctl:*)", "Bash(fly:*)", "Bash(docker push:*)",
-      "Bash(aws:*)", "Bash(gcloud:*)", "Bash(firebase:*)", "Bash(heroku:*)", "Bash(sqlite3:*)",
-      "Read(./.env)", "Edit(./.env)", "Write(./.env)", "Edit(./data/**)", "Write(./data/**)",
-      "mcp__github__create_or_update_file", "mcp__github__push_files", "mcp__github__create_pull_request", "mcp__github__merge_pull_request",
-      "mcp__github__create_issue", "mcp__github__add_issue_comment", "mcp__github__create_repository", "mcp__github__fork_repository",
-      "mcp__gmail__send_email", "mcp__gmail__send_message", "mcp__gmail__send_draft",
-      "mcp__slack__slack_post_message", "mcp__slack__slack_reply_to_thread",
-      "mcp__calendar__create_event", "mcp__calendar__update_event", "mcp__calendar__delete_event",
-      "mcp__drive__upload_file", "mcp__drive__share_file", "mcp__drive__delete_file"
+      "Bash(git push:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash(npm publish:*)",
+      "Bash(yarn publish:*)",
+      "Bash(pnpm publish:*)",
+      "Bash(gh:*)",
+      "Bash(ssh:*)",
+      "Bash(scp:*)",
+      "Bash(rsync:*)",
+      "Bash(nc:*)",
+      "Bash(sendmail:*)",
+      "Bash(mail:*)",
+      "Bash(stripe:*)",
+      "Bash(vercel:*)",
+      "Bash(netlify:*)",
+      "Bash(flyctl:*)",
+      "Bash(fly:*)",
+      "Bash(docker push:*)",
+      "Bash(aws:*)",
+      "Bash(gcloud:*)",
+      "Bash(firebase:*)",
+      "Bash(heroku:*)",
+      "Bash(sqlite3:*)",
+      "Read(./.env)",
+      "Edit(./.env)",
+      "Edit(./data/**)",
+      "mcp__github__create_or_update_file",
+      "mcp__github__push_files",
+      "mcp__github__create_pull_request",
+      "mcp__github__merge_pull_request",
+      "mcp__github__create_issue",
+      "mcp__github__add_issue_comment",
+      "mcp__github__create_repository",
+      "mcp__github__fork_repository",
+      "mcp__gmail__send_email",
+      "mcp__gmail__send_message",
+      "mcp__gmail__send_draft",
+      "mcp__slack__slack_post_message",
+      "mcp__slack__slack_reply_to_thread",
+      "mcp__calendar__create_event",
+      "mcp__calendar__update_event",
+      "mcp__calendar__delete_event",
+      "mcp__drive__upload_file",
+      "mcp__drive__share_file",
+      "mcp__drive__delete_file"
     ]
   },
   "hooks": {
-    "PreToolUse": [{ "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/hooks/emit.ts\"", "async": true }] }],
-    "PostToolUse": [{ "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/hooks/emit.ts\"", "async": true }] }],
-    "SubagentStart": [{ "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/hooks/emit.ts\"", "async": true }] }],
-    "SubagentStop": [{ "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/hooks/emit.ts\"", "async": true }] }],
-    "Stop": [{ "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/hooks/emit.ts\"", "async": true }] }]
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/hooks/emit.ts\"",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/hooks/emit.ts\"",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/hooks/emit.ts\"",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/hooks/emit.ts\"",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/hooks/emit.ts\"",
+            "async": true
+          }
+        ]
+      }
+    ]
   }
 }

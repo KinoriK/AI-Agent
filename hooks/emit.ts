@@ -13,11 +13,11 @@ try {
   for await (const chunk of process.stdin) raw += chunk;
   const h = JSON.parse(raw);
   const type = TYPES[h.hook_event_name];
-  if (type) {
+  if (type && h.agent_type) { // only office agents (claude --agent ... or subagents); plain dev sessions stay invisible
     const tool: string | undefined = h.tool_name;
     logEvent({
       type,
-      agent: h.agent_type ?? process.env.OFFICE_AGENT ?? 'chief-of-staff',
+      agent: h.agent_type,
       tool,
       label: tool ? toolLabel(tool, h.tool_input) : h.hook_event_name,
       session: h.session_id,

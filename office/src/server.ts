@@ -1,19 +1,11 @@
 // "office" MCP server: the shared brain, the task board, the approval queue and the media suite.
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import * as db from './db.ts';
 import { brainRead, brainWrite, brainSearch } from './brain.ts';
 import * as media from './media.ts';
+import { createServer } from './mcp.ts';
 
-const server = new McpServer({ name: 'office', version: '1.0.0' });
-const ok = (data: unknown) => ({ content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] });
-function tool(name: string, description: string, shape: z.ZodRawShape, fn: (a: any) => unknown) {
-  server.registerTool(name, { description, inputSchema: shape }, async (args: any) => {
-    try { return ok(await fn(args)); }
-    catch (e: any) { return { isError: true, content: [{ type: 'text' as const, text: String(e?.message ?? e) }] }; }
-  });
-}
+const { tool, start } = createServer('office');
 const agent = z.string().describe('Your agent name, e.g. "github-scout"');
 
 // Brain
@@ -57,4 +49,4 @@ tool('media_music_list', 'List licensed tracks in the office music library with 
 tool('media_add_music', 'Lay a library track under a video (default -18 dB).', { input: file, track: file, volume_db: z.number().default(-18), out: z.string().optional() },
   a => media.addMusic(a.input, a.track, a.volume_db, a.out));
 
-await server.connect(new StdioServerTransport());
+await start();

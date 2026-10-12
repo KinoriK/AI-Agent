@@ -11,10 +11,21 @@
     "dashboard": "node dashboard/server/index.ts",
     "dev:web": "vite dashboard/web",
     "build": "vite build dashboard/web",
-    "start": "npm run build && npm run dashboard"
+    "start": "npm run build && npm run dashboard",
+    "agents": "node office/src/gen-agents.ts",
+    "chief": "claude --agent chief-of-staff",
+    "ask": "node office/src/chief.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.1",
+    "express": "^5.3.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "ws": "^8.22.0",
     "zod": "^4.6.6"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.1.2",
+    "vite": "^8.3.4"
   }
 }

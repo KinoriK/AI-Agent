@@ -42,8 +42,9 @@ export const AGENTS: Agent[] = [
   { name: 'chief-of-staff', team: 'chief', model: 'inherit',
     title: 'the Chief of Staff and the only agent who talks to the owner directly',
     does: 'Takes the owner\'s requests, breaks them into team-sized jobs, routes each to the right team lead, waits for their results, and reports back in plain language: what was done, what is waiting for approval, what failed.',
-    tools: ['Agent(research-lead, head-writer, social-lead, analytics-lead, listings-agent, dev-lead, inbox-lead, video-editor)', ...BASE, ...APPROVE.slice(1), ...SLACK],
-    never: ['Do a team\'s work yourself. Route it to the lead.', 'Approve, reject or edit approval items. Only the owner does that, in the dashboard.', NO_SEND],
+    // Plain `Agent`: an Agent(a, b) allowlist on the main thread is inherited by every nested subagent, which would stop leads spawning their members.
+    tools: ['Agent', ...BASE, ...APPROVE.slice(1), ...SLACK],
+    never: ['Do a team\'s work yourself, or spawn anyone but the eight team leads. Route it to the lead.', 'Approve, reject or edit approval items. Only the owner does that, in the dashboard.', NO_SEND],
     workflow: `Routing table:
 - trending repos, research, briefings -> research-lead
 - hooks, scripts, fact-checks -> head-writer
@@ -169,7 +170,8 @@ Steps:
 1. Read brain/company/brand.md and brain/creative.
 2. drive_list_files (new videos), then drive_download each one. Create one board task per clip.
 3. In ONE message spawn one subagent per clip, all at once. Give each: the local clip path, its task id, and this job:
-   media_cut (rough cut) -> media_transcribe -> media_burn_captions -> media_thumbnail (title from the transcript) -> return the output paths.
+   media_cut (rough cut, max 60 s) -> media_resize 9x16 -> media_transcribe -> media_burn_captions on the 9x16 file
+   -> media_thumbnail from the cut (NOT the captioned file; title = punchiest 2-5 words from the transcript) -> return all output paths.
    Use captions-copywriter for clip subagents (it has the media tools).
 4. Spawn brand-checker on all outputs together.
 5. For each clip that passes, approval_request kind "publish" with draft {video, thumbnail, captions, title, brand_check}. Fix and recheck any that fail.

@@ -40,7 +40,7 @@ export async function cut(input: string, start = 0, duration?: number, out?: str
 }
 
 const ts = (s: number) => new Date(Math.max(0, s) * 1000).toISOString().slice(11, 23).replace('.', ',');
-export function textToSrt(text: string, duration: number, wordsPerCue = 6) {
+export function textToSrt(text: string, duration: number, wordsPerCue = 4) {
   const words = text.trim().split(/\s+/).filter(Boolean);
   const cues = [];
   for (let i = 0; i < words.length; i += wordsPerCue) cues.push(words.slice(i, i + wordsPerCue).join(' '));
@@ -83,7 +83,7 @@ export async function burnCaptions(input: string, srt: string, out?: string) {
   const dst = outFor(input, 'captioned', '.mp4', out);
   const s = mediaPath(srt);
   // run from the srt's folder so the filter arg needs no path escaping
-  const style = 'FontName=DejaVu Sans,Fontsize=14,Bold=1,PrimaryColour=&H0000B0FF,OutlineColour=&H00000000,BorderStyle=1,Outline=2,Shadow=1,Alignment=2,MarginV=40';
+  const style = 'FontName=DejaVu Sans,Fontsize=11,Bold=1,PrimaryColour=&H0000B0FF,OutlineColour=&H00000000,BorderStyle=1,Outline=2,Shadow=1,Alignment=2,MarginV=60';
   await ff(['-i', mediaPath(input), '-vf', `subtitles=${path.basename(s)}:force_style='${style}'`, ...ENC, dst], path.dirname(s));
   return { output: relOut(dst) };
 }
@@ -123,7 +123,7 @@ export async function musicList() {
   fs.mkdirSync(MUSIC, { recursive: true });
   for (const t of TRACKS) {
     const f = path.join(MUSIC, `${t.id}.m4a`);
-    if (!fs.existsSync(f)) await ff(['-f', 'lavfi', '-i', `aevalsrc=${t.expr}:s=44100:d=90`, '-c:a', 'aac', f]);
+    if (!fs.existsSync(f)) await ff(['-f', 'lavfi', '-i', `aevalsrc='${t.expr}':s=44100:d=90`, '-c:a', 'aac', f]);
   }
   return fs.readdirSync(MUSIC).filter(f => /\.(m4a|mp3|wav)$/.test(f))
     .map(f => ({ track: relOut(path.join(MUSIC, f)), mood: TRACKS.find(t => f.startsWith(t.id))?.mood ?? 'unlabelled', license: 'office library' }));
