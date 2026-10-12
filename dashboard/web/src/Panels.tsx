@@ -194,7 +194,7 @@ export function Wire({ feed }: { feed: OfficeEvent[] }) {
   return (
     <div className="wire" aria-label="Live activity">
       {feed.slice(0, 14).map(e => (
-        <span key={e.id} className={`wire-item ${e.type}`}>
+        <span key={e.id} className={`wire-item ev-${e.type}`}>
           <b>{e.agent}</b> {e.type === 'agent_start' ? 'clocked in' : e.type === 'agent_stop' ? 'clocked out' : e.label}
         </span>
       ))}

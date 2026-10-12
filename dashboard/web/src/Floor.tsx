@@ -14,7 +14,7 @@ export const ROOMS: Record<string, Rect> = {
   dev:       { x: 1220, y: 300, w: 380, h: 400, door: [1220, 500], side: 'left' },
   shop:      { x: 0,    y: 700, w: 380, h: 300, door: [330, 700],  side: 'top' },
   inbox:     { x: 380,  y: 700, w: 420, h: 300, door: [590, 700],  side: 'top' },
-  chief:     { x: 1220, y: 700, w: 380, h: 300, door: [1270, 700], side: 'top' },
+  chief:     { x: 1220, y: 700, w: 380, h: 300, door: [1550, 700], side: 'top' },
 };
 const LOBBY = { x: 800, y: 700, w: 420, h: 300 };
 const BRAIN: [number, number] = [800, 500];
@@ -71,15 +71,18 @@ export function Floor({ state, instances, pulses, onRoom, selected }: {
               role="button" tabIndex={0} aria-label={`${team.room}, ${team.name} team`} onKeyDown={e => e.key === 'Enter' && onRoom(team.id)}>
               <header className="room-head">
                 <span className="room-name">{team.room}</span>
-                <span className="room-team">{team.name}</span>
               </header>
               {team.id === 'chief' && <div className="rug" />}
               <div className={`desks ${team.id === 'chief' ? 'solo' : ''}`}>
                 {desks.map(d => <Desk key={d.key} name={d.name} working={d.working} label={d.label} ghost={d.ghost} />)}
               </div>
-              <div className={`nameplate door-${r.side}`} style={{ left: r.door[0] - r.x, top: r.door[1] - r.y }}>{team.name}</div>
             </section>
           );
+        })}
+
+        {state.teams.map(team => {
+          const r = ROOMS[team.id];
+          return <div key={team.id} className={`nameplate door-${r.side}`} style={{ left: r.door[0], top: r.door[1] }}>{team.name}</div>;
         })}
 
         <Lobby integrations={state.integrations} />
