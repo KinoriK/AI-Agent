@@ -13,7 +13,9 @@ try {
   for await (const chunk of process.stdin) raw += chunk;
   const h = JSON.parse(raw);
   const type = TYPES[h.hook_event_name];
-  if (type && h.agent_type) { // only office agents (claude --agent ... or subagents); plain dev sessions stay invisible
+  // Only office agents (claude --agent ... or subagents) animate the office; plain dev sessions stay invisible.
+  // Stop carries no agent_type, but it's what tells the dashboard a Chief run has finished.
+  if (type && (h.agent_type || type === 'session_stop')) {
     const tool: string | undefined = h.tool_name;
     logEvent({
       type,

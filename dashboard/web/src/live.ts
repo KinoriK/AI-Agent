@@ -15,13 +15,13 @@ const STALE_MS = 3 * 60_000; // an instance with no events for this long is cons
 
 function applyEvent(instances: Map<string, Instance>, e: OfficeEvent) {
   const at = Date.parse(e.ts);
-  if (!e.agent) return;
-  const id = e.instance ?? e.session ?? e.agent;
-  if (e.type === 'agent_stop') { instances.delete(id); return; }
   if (e.type === 'session_stop') {
     for (const [k, v] of instances) if (v.session === e.session) instances.delete(k);
     return;
   }
+  if (!e.agent) return;
+  const id = e.instance ?? e.session ?? e.agent;
+  if (e.type === 'agent_stop') { instances.delete(id); return; }
   if (e.type === 'agent_start' || e.type === 'tool_start' || e.type === 'tool_end') {
     const prev = instances.get(id);
     instances.set(id, {
