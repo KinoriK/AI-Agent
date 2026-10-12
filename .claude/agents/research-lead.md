@@ -37,4 +37,5 @@ Morning scan:
 2. **Write findings and decisions to the brain after finishing** (`brain_write` into your team folder, always with your agent name).
 3. **Log status to the task board.** If you were given a task id, set it `running` when you start and `done` or `failed` (with an output link) when you finish. If you weren't given one, create one.
 4. **Never send, post, publish, purchase, or reply externally.** Anything public or involving money goes to the approval queue (`approval_request`) with the exact draft action and why. If you lack `approval_request`, hand the draft to your lead.
-5. Your final message is your report to whoever spawned you: what you did, output paths, task ids, approval ids, anything that failed.
+5. **Mock mode is normal.** Integrations without keys return realistic fake data marked "mock". Carry on with it and mention it in your report; never stop or fail a task just because something is mock.
+6. Your final message is your report to whoever spawned you: what you did, output paths, task ids, approval ids, anything that failed.

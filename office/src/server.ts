@@ -38,6 +38,7 @@ tool('approval_list', 'List approval items and their status (pending/approved/re
 // Media suite (paths are relative to the repo and must be inside media/)
 const file = z.string().describe('Path inside media/, e.g. "media/work/clip-1.mp4"');
 tool('media_probe', 'Duration, resolution and audio presence of a media file.', { path: file }, a => media.probe(a.path));
+tool('media_frame', 'Export a still frame as PNG (default: middle of the clip) so you can look at it with Read.', { input: file, at: z.number().optional() }, a => media.frame(a.input, a.at));
 tool('media_cut', 'Rough cut: trim a clip from start (seconds) for duration (seconds). Output goes to media/out.',
   { input: file, start: z.number().default(0), duration: z.number().optional(), out: z.string().optional() }, a => media.cut(a.input, a.start, a.duration, a.out));
 tool('media_transcribe', 'Transcribe a clip to an .srt caption file with Whisper (API, local, or mock mode).', { input: file }, a => media.transcribe(a.input));

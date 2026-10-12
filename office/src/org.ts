@@ -33,7 +33,7 @@ const GMAIL = ['mcp__gmail__gmail_search', 'mcp__gmail__gmail_read', 'mcp__gmail
 const SLACK = ['mcp__slack__slack_notify'];
 const SHOP_READ = ['mcp__shop__shop_list_orders', 'mcp__shop__shop_list_listings', 'mcp__shop__shop_list_tickets'];
 const ANALYTICS = ['mcp__analytics__analytics_post_stats', 'mcp__analytics__analytics_channel_summary'];
-const MEDIA = o('media_probe');
+const MEDIA = o('media_probe', 'media_frame');
 
 const NO_SEND = 'Send, post, publish, schedule, purchase or reply to anything outside the office. Those go to the approval queue.';
 
@@ -174,11 +174,12 @@ Steps:
    -> media_thumbnail from the cut (NOT the captioned file; title = punchiest 2-5 words from the transcript) -> return all output paths.
    Use captions-copywriter for clip subagents (it has the media tools).
 4. Spawn brand-checker on all outputs together.
-5. For each clip that passes, approval_request kind "publish" with draft {video, thumbnail, captions, title, brand_check}. Fix and recheck any that fail.
+5. For each clip that passes, approval_request kind "publish" with draft {video, thumbnail, captions (the .srt path), title, brand_check} and the clip's task_id.
+   For a FAIL, have a clip editor fix it and recheck once. Anything still failing gets filed anyway with brand_check describing the issue, so the owner decides.
 6. Write a summary to brain/creative.` },
   { name: 'graphic-designer', team: 'creative', model: 'haiku',
     title: 'the graphic designer', does: 'Makes thumbnails and title cards with the local thumbnail tool, following the brand palette.',
-    tools: [...BASE, ...o('media_probe', 'media_thumbnail'), 'Read'], never: ['Use logos, characters or artwork you do not own.', NO_SEND] },
+    tools: [...BASE, ...o('media_probe', 'media_frame', 'media_thumbnail'), 'Read'], never: ['Use logos, characters or artwork you do not own.', NO_SEND] },
   { name: 'captions-copywriter', team: 'creative', model: 'haiku',
     title: 'the captions copywriter (and per-clip editor when the lead spawns one per clip)', does: 'Transcribes clips, cleans up caption text, burns captions in, and when acting as a clip editor runs the full cut -> captions -> thumbnail chain for one clip.',
     tools: [...BASE, ...o('media_probe', 'media_cut', 'media_transcribe', 'media_burn_captions', 'media_thumbnail', 'media_resize')], never: ['Change what the speaker said beyond fixing obvious transcription errors.', NO_SEND] },
@@ -186,7 +187,7 @@ Steps:
     title: 'the music supervisor', does: 'Picks a licensed track from the office music library that fits the cut\'s mood and lays it under the video at a safe level.',
     tools: [...BASE, ...o('media_probe', 'media_music_list', 'media_add_music')], never: ['Use music that is not in the licensed library.', NO_SEND] },
   { name: 'brand-checker', team: 'creative', model: 'sonnet',
-    title: 'the brand checker', does: 'Reviews every creative output against brain/company/brand.md: palette, captions legible and correct, no third-party logos or characters, right dimensions. Returns PASS or FAIL with fixes per file.',
+    title: 'the brand checker', does: 'Reviews every creative output against brain/company/brand.md. Looks at real frames (media_frame + Read) and thumbnails, checks captions match the transcript, dimensions and length. Returns PASS or FAIL with concrete fixes per file. Judges what the office added (captions, titles, thumbnails, framing), not the creator\'s raw footage.',
     tools: [...BASE, ...MEDIA, 'Read'], never: ['Edit the files yourself. Report fixes to the lead.', NO_SEND] },
   { name: 'resizer', team: 'creative', model: 'haiku',
     title: 'the resizer', does: 'Produces platform versions of a finished video: 9:16, 1:1 and 16:9.',

@@ -7,8 +7,9 @@ const ago = (iso: string) => {
   const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000);
   return s < 60 ? `${Math.round(s)}s` : s < 3600 ? `${Math.round(s / 60)}m` : `${Math.round(s / 3600)}h`;
 };
-const mediaUrl = (p: string) => '/' + p.replace(/^\/+/, '');
-const isMedia = (v: unknown): v is string => typeof v === 'string' && /^media\//.test(v);
+// Agents may write "media/out/x.mp4" or an absolute path; serve both from /media.
+const mediaUrl = (p: string) => '/' + p.slice(p.search(/(^|\/)media\//)).replace(/^\/+/, '');
+const isMedia = (v: unknown): v is string => typeof v === 'string' && /(^|\/)media\/[^\s]+$/.test(v);
 
 export function Panel({ title, children, extra, className = '' }: { title: string; children: React.ReactNode; extra?: React.ReactNode; className?: string }) {
   return (

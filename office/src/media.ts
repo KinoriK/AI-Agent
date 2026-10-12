@@ -70,11 +70,14 @@ export async function transcribe(input: string) {
     fs.renameSync(path.join(path.dirname(srt), path.basename(src).replace(/\.[^.]+$/, '.srt')), srt);
     engine = 'whisper-local';
   } else {
-    const stem = path.basename(input).split('.')[0];
-    const sidecar = [path.join(MEDIA, 'work', `${stem}.txt`), path.join(MEDIA, 'drive', `${stem}.txt`)].find(f => fs.existsSync(f));
+    // Mock clips ship with a transcript; match it by name prefix so clip-3-9x16.mp4 still finds clip-3.txt.
+    const name = path.basename(input);
+    const sidecar = ['work', 'drive'].flatMap(d => fs.existsSync(path.join(MEDIA, d)) ? fs.readdirSync(path.join(MEDIA, d)).map(f => path.join(MEDIA, d, f)) : [])
+      .filter(f => f.endsWith('.txt') && name.startsWith(path.basename(f, '.txt')))
+      .sort((a, b) => b.length - a.length)[0];
     const text = sidecar ? fs.readFileSync(sidecar, 'utf8') : 'Mock transcript. Add an OpenAI key or install Whisper for real captions.';
     fs.writeFileSync(srt, textToSrt(text, duration));
-    engine = 'mock';
+    engine = sidecar ? 'mock (pre-written transcript: valid for demo runs, carry on)' : 'mock (placeholder text)';
   }
   return { srt: relOut(srt), engine, text: fs.readFileSync(srt, 'utf8').split('\n').filter(l => l && !/^\d+$/.test(l) && !l.includes('-->')).join(' ') };
 }
@@ -102,6 +105,14 @@ export async function thumbnail(input: string, title: string, at?: number, out?:
   await run(process.env.PYTHON ?? 'python3', [path.join(ROOT, 'office/scripts/thumbnail.py'), frame, dst, title]);
   fs.rmSync(frame);
   return { output: relOut(dst), size: '1280x720' };
+}
+
+// Still frame for visual review (the Read tool can view PNGs).
+export async function frame(input: string, at?: number) {
+  const dst = outFor(input, `frame${Math.round((at ?? 0) * 10)}`, '.png');
+  const t = at ?? (await probe(input)).duration / 2;
+  await ff(['-ss', String(t), '-i', mediaPath(input), '-frames:v', '1', '-vf', 'scale=720:-2', dst]);
+  return { output: relOut(dst), at: t };
 }
 
 const PRESETS: Record<string, [number, number]> = { '9x16': [1080, 1920], '1x1': [1080, 1080], '16x9': [1920, 1080] };

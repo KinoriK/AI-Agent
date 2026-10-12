@@ -3,7 +3,7 @@ const LABELS: Record<string, string> = {
   brain_read: 'reading the brain', brain_write: 'writing to the brain', brain_search: 'searching the brain',
   task_create: 'posting a task', task_update: 'updating the board', task_list: 'checking the board',
   approval_request: 'filing for approval', approval_list: 'checking approvals',
-  media_probe: 'inspecting footage', media_cut: 'cutting the clip', media_transcribe: 'transcribing audio',
+  media_probe: 'inspecting footage', media_frame: 'studying a frame', media_cut: 'cutting the clip', media_transcribe: 'transcribing audio',
   media_burn_captions: 'burning captions', media_thumbnail: 'drawing a thumbnail', media_resize: 'resizing video',
   media_music_list: 'browsing the music library', media_add_music: 'laying in music',
   search_repositories: 'searching GitHub', get_repo: 'sizing up a repo', get_readme: 'reading a README',
