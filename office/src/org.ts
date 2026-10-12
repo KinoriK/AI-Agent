@@ -34,6 +34,7 @@ const SLACK = ['mcp__slack__slack_notify'];
 const SHOP_READ = ['mcp__shop__shop_list_orders', 'mcp__shop__shop_list_listings', 'mcp__shop__shop_list_tickets'];
 const ANALYTICS = ['mcp__analytics__analytics_post_stats', 'mcp__analytics__analytics_channel_summary'];
 const MEDIA = o('media_probe', 'media_frame');
+const GEN = o('generation_models', 'generation_request', 'generation_status'); // paid AI video/images, approval only
 
 const NO_SEND = 'Send, post, publish, schedule, purchase or reply to anything outside the office. Those go to the approval queue.';
 
@@ -165,7 +166,7 @@ Steps:
   // 8. Creative
   { name: 'video-editor', team: 'creative', model: 'sonnet',
     title: 'the head of Creative and lead video editor', does: 'Pulls clips from Drive, spawns one clip-editing subagent per clip in parallel (each cuts, captions and thumbnails its clip), sends all outputs to the brand-checker, then files the results in the approval queue.',
-    tools: [...LEAD, ...DRIVE, ...MEDIA],
+    tools: [...LEAD, ...DRIVE, ...MEDIA, ...GEN],
     never: ['Process clips one at a time when they can run in parallel.', 'File an approval without a brand-check verdict.', NO_SEND],
     workflow: `"Grab the N new clips from Drive and edit them in parallel":
 1. Read brain/company/brand.md and brain/creative.
@@ -183,10 +184,24 @@ Steps:
 6. For each clip that passes, approval_request kind "publish" with draft {video, thumbnail, captions (the .srt path), title, brand_check, notes} and the clip's task_id.
    video/thumbnail/captions must be bare paths like media/out/x.mp4 (no sizes or comments); put notes in brand_check or notes.
    For a FAIL, have a clip editor fix it and recheck once. Anything still failing gets filed anyway with brand_check describing the issue, so the owner decides.
-7. Write a summary to brain/creative.` },
+7. Write a summary to brain/creative.
+
+"Make a <N>-second (noir) AI video about <topic>":
+1. Get a shot list: ask head-writer for a short script if none exists, then have graphic-designer plan the shots
+   (one line each: what we see, camera move, seconds). Keep the total to what the owner asked for.
+2. Prefer image-to-video from a styled still for the noir look: graphic-designer makes the still (media_thumbnail/media_frame
+   on existing footage, or a text-to-image model via generation_request) and you animate it.
+3. generation_models to check models and prices. Defaults: drafts -> kling-3.0-turbo-i2v; hero shots -> seedance-2.5-i2v
+   or kling-3.0-pro-t2v; never 4K for shorts. Use 9:16 for shorts unless the owner says otherwise.
+4. ONE generation_request per shot with a clear why and the estimated cost; report all approval ids and the total.
+   Nothing is generated until the owner approves each one in the dashboard. Do not wait for approval inside the run.
+5. In a later run (owner says the clips are in), generation_status to find the files in media/out/gen-<approval id>.mp4,
+   then the normal pipeline per clip: cut, captions, music, brand-checker, and a "publish" approval
+   (there is no tool to join clips yet; if the shots must become one video, say so in the report).
+   Mock generations are test-pattern placeholders: say so in the report.` },
   { name: 'graphic-designer', team: 'creative', model: 'haiku',
     title: 'the graphic designer', does: 'Makes thumbnails and title cards with the local thumbnail tool, following the brand palette.',
-    tools: [...BASE, ...o('media_probe', 'media_frame', 'media_thumbnail'), 'Read'], never: ['Use logos, characters or artwork you do not own.', NO_SEND] },
+    tools: [...BASE, ...o('media_probe', 'media_frame', 'media_thumbnail'), ...GEN, 'Read'], never: ['Use logos, characters or artwork you do not own.', 'Spend money except through generation_request (one approval per shot, with the estimated cost).', NO_SEND] },
   { name: 'captions-copywriter', team: 'creative', model: 'haiku',
     title: 'the captions copywriter (and per-clip editor when the lead spawns one per clip)', does: 'Transcribes clips, cleans up caption text, burns captions in, and when acting as a clip editor runs the full cut -> captions -> thumbnail chain for one clip.',
     tools: [...BASE, ...o('media_probe', 'media_cut', 'media_transcribe', 'media_burn_captions', 'media_thumbnail', 'media_resize')], never: ['Change what the speaker said beyond fixing obvious transcription errors.',

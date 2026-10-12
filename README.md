@@ -6,7 +6,7 @@ A small company of AI agents that runs inside Claude Code, with a live office fl
 - **Office MCP server**: the shared tools every agent uses (brain, task board, approval queue, video editing).
 - **Brain**: plain Markdown files in `brain/` where agents read the brand rules and write their findings.
 - **Task board**: every job an agent takes on, with status and output.
-- **Approval queue**: anything that leaves the office (email, posts, publishing, deploys) waits here until you approve it.
+- **Approval queue**: anything that leaves the office (email, posts, publishing, deploys, paid AI video) waits here until you approve it.
 - **Dashboard**: a pixel-art office floor showing who is working, the board, the approval queue and a command bar to talk to the Chief.
 
 ## How it fits together
@@ -40,6 +40,7 @@ office/src/
   server.ts          the "office" MCP server
   integrations.ts    GitHub/Google/Slack/shop/analytics servers and the approval executor
   media.ts           ffmpeg / Whisper / thumbnail pipeline
+  higgsfield.ts      Higgsfield AI video client (runs only after approval); catalog in higgsfield-models.ts
   chief.ts           runs the Chief of Staff headless
   labels.ts          speech-bubble text for each tool on the dashboard
 office/scripts/      thumbnail.py (Pillow)
@@ -172,6 +173,7 @@ Agents can only *request* an action. When you click Approve in the dashboard:
 
 | Kind | What happens |
 |------|--------------|
+| `purchase` (Higgsfield) | Uploads reference files, submits the generation, polls it in the background and downloads the result to `media/out/gen-<id>.*`. See [AI video](#ai-video-higgsfield). |
 | `publish` | The video, thumbnail and captions are copied to `media/published/approval-<id>/`, ready to upload. |
 | `email` | Gmail live: saved to Gmail Drafts. Sent only if `GMAIL_ALLOW_SEND=1`. |
 | `post` / `schedule` | Calendar live: a Google Calendar reminder at the proposed time (no social network API is connected, you post it). |
@@ -179,9 +181,55 @@ Agents can only *request* an action. When you click Approve in the dashboard:
 
 When Slack is live, every approval also sends a one-line ping to your channel.
 
+## AI video (Higgsfield)
+
+The Creative team can ask for AI-generated shots through [Higgsfield](https://higgsfield.ai). Agents can only *request* them; every shot is a `purchase` approval that you approve (and pay for) one by one.
+
+**Setup.** Create a key at https://open.higgsfield.ai/api-keys, then put the complete copied key, as-is, in `.env`:
+
+```
+HF_API_KEY=<the whole key you copied>
+HIGGSFIELD_MAX_USD_PER_DAY=10
+```
+
+The key stays on the server: it is read from `.env`, sent only to `api.higgsfield.ai` as `Authorization: Key <key>`, and never logged or shown in the dashboard. Agent HQ is a single-owner local app, so there is no per-user "connect your API key" screen; the `.env` key is the app's key. Without a key, Higgsfield runs in **mock mode**: approving renders a short local test-pattern clip (right length and aspect ratio) so you can try the whole flow for free.
+
+**Ask the Chief**, for example: `Make a 15-second noir AI video about agent cost traps`. The video editor gets a shot list from Scripts/graphic designer, prefers animating a styled still (image to video) for the noir look, and files one approval per shot.
+
+**The approval card** shows the model, the input (prompt, duration, aspect ratio, reference files), the estimated cost and whether the price is listed or estimated. After you approve: live status (submitting, queued, in progress, completed, failed, nsfw, canceled, unknown), the finished video or image, and a **Cancel generation** button while it runs. Higgsfield only accepts a cancel while the job is still queued.
+
+**Cost controls.**
+- `HIGGSFIELD_MAX_USD_PER_DAY` (default 10): an approval that would push today's estimated spend over the cap is refused (failed, NSFW-blocked and canceled ones don't count).
+- Input is checked against the model's schema before the approval is filed, and again when you approve (in case you edited it).
+- A submit is never blindly re-sent. If the network drops mid-submit it is resent once with the same `Idempotency-Key` (Higgsfield then returns the original request instead of charging again); if that fails too the generation is marked `unknown`: check your Higgsfield dashboard.
+- Polling backs off from 2 s to 15 s and gives up after 20 minutes (status `unknown`). Generations still running when the dashboard restarts are picked up again.
+
+Known prices (USD per second of output video, from the Higgsfield API pricing page; models without a clear match are estimated with `HIGGSFIELD_UNKNOWN_USD_PER_SEC`, default 0.40):
+
+| Model | $/s | In catalog as |
+|-------|-----|---------------|
+| Seedance 2.5 text/image to video | 0.1758 | `seedance-2.5-t2v`, `seedance-2.5-i2v` |
+| Seedance 2.5 reference to video / video edit | 0.2108 | `seedance-2.5-r2v` |
+| Kling 3.0 4K | 0.357 | not mapped (no documented path found) |
+| Kling 3.0 Pro | 0.1428 | `kling-3.0-pro-t2v` |
+| Kling 3.0 Standard (image to video) | 0.1071 | `kling-3.0-std-i2v` |
+| Kling 3.0 Turbo | 0.119 | `kling-3.0-turbo-i2v` |
+| Happy Horse 1.1 | 0.153 | not mapped (docs page found is 1.0) |
+| Seedance 2.0 text/image to video | 0.1197 | `seedance-2.0-t2v` |
+| Seedance 2.0 reference to video | 0.1428 | not mapped |
+| MiniMax H3 | 0.1105 | not mapped |
+
+**What is not verified yet.** The docs sites (docs.higgsfield.ai, open.higgsfield.ai) could not be opened directly when this was built, so the catalog in `office/src/higgsfield-models.ts` was assembled from search-engine copies of those pages and the official JS SDK. Every entry is marked `verified: false` with its source page; check the Input JSON Schema there before relying on limits. Any other documented model path can still be requested (basic checks, estimated price). Live calls (auth, submit, status, cancel, file upload) have not been run against a real key. Webhooks are not used (this app has no public URL); it polls.
+
+**Test your key.** There is no documented free "who am I" endpoint. This asks for the status of a made-up request: `401` means the key is wrong, `404` (or another non-401/403 answer) means the key was accepted. It prints no secret and costs nothing:
+
+```bash
+node --input-type=module -e "await import('./office/src/paths.ts'); const r = await fetch((process.env.HF_API_BASE_URL||'https://api.higgsfield.ai')+'/requests/00000000-0000-0000-0000-000000000000/status',{headers:{Authorization:'Key '+process.env.HF_API_KEY}}); console.log(r.status, r.status===401||r.status===403 ? 'key rejected' : 'key accepted')"
+```
+
 ## Safety model
 
-- Agents can only file approval requests. Only you decide, in the dashboard.
+- Agents can only file approval requests. Only you decide, in the dashboard. Paid AI generation has no agent-side submit or upload tool, and a daily USD cap.
 - `.claude/settings.json` denies network and publishing commands (curl, ssh, gh, npm publish, cloud CLIs, sending email, posting to Slack directly, editing `.env`) and asks before `git push` and Slack notifications.
 - Each agent gets only the tools it needs (least privilege, defined in `office/src/org.ts`).
 - Media tools only read and write inside `media/`.

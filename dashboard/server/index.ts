@@ -10,6 +10,7 @@ import { TEAMS, AGENTS } from '../../office/src/org.ts';
 import { brainRead, brainRecent } from '../../office/src/brain.ts';
 import { integrationStatus, execute } from '../../office/src/integrations.ts';
 import { askChief } from '../../office/src/chief.ts';
+import { cancelGeneration, resumeGenerations } from '../../office/src/higgsfield.ts';
 
 const PORT = Number(process.env.PORT ?? 4000);
 const HOST = process.env.HOST ?? '127.0.0.1'; // local only: this server can approve real actions
@@ -26,6 +27,7 @@ app.get('/api/state', (_req, res) => {
     agents: AGENTS.map(({ name, team, title, does }) => ({ name, team, title, does })),
     tasks: db.taskList({ limit: 200 }).filter(t => t.status === 'running' || t.status === 'queued' || t.status === 'awaiting_approval' || t.updated_at >= startOfDay()),
     approvals: db.approvalList({ limit: 100 }),
+    generations: db.generationList({ limit: 100 }),
     integrations: integrationStatus(),
     events: db.eventsAfter(Math.max(0, last - 400), 400), // replayed by the client to rebuild who is working
   });
@@ -65,6 +67,10 @@ app.post('/api/approvals/:id/reject', (req, res) => {
   try { res.json(db.approvalDecide(Number(req.params.id), 'rejected', { result: req.body?.reason ?? 'rejected by owner' })); }
   catch (e: any) { res.status(400).json({ error: e.message }); }
 });
+// Paid AI generation: cancel reaches Higgsfield's cancel endpoint (only works while still queued there).
+app.post('/api/generations/:id/cancel', async (req, res) => {
+  try { res.json(await cancelGeneration(Number(req.params.id))); } catch (e: any) { res.status(400).json({ error: e.message }); }
+});
 
 // Command bar -> Chief of Staff
 app.post('/api/command', (req, res) => {
@@ -102,4 +108,4 @@ const onListenError = (e: any) => {
 };
 server.on('error', onListenError);
 wss.on('error', onListenError); // ws re-emits the http server's listen error
-server.listen(PORT, HOST, () => console.log(`Agent HQ dashboard on http://${HOST}:${PORT}`));
+server.listen(PORT, HOST, () => { console.log(`Agent HQ dashboard on http://${HOST}:${PORT}`); resumeGenerations(); });

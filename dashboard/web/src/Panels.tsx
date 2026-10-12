@@ -1,6 +1,6 @@
 // Side panels: task board, approval queue, room details, command bar and the wire (live feed).
 import { useEffect, useRef, useState } from 'react';
-import type { State, Task, Approval, OfficeEvent } from './live';
+import type { State, Task, Approval, Generation, OfficeEvent } from './live';
 import { post } from './live';
 
 const ago = (iso: string) => {
@@ -71,7 +71,7 @@ function DraftView({ draft }: { draft: Record<string, any> }) {
   );
 }
 
-function ApprovalCard({ a, onChange }: { a: Approval; onChange: () => void }) {
+function ApprovalCard({ a, gen, onChange }: { a: Approval; gen?: Generation; onChange: () => void }) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -89,6 +89,7 @@ function ApprovalCard({ a, onChange }: { a: Approval; onChange: () => void }) {
         <span className="ameta">#{a.id} · {a.agent} · {ago(a.created_at)} ago</span>
       </header>
       <p className="reason"><b>Why:</b> {a.reason}</p>
+      {a.draft.provider === 'higgsfield' && <p className="reason"><b>Higgsfield:</b> {a.draft.model} · est ${a.draft.est_usd} · {a.draft.price}</p>}
       {editing
         ? <textarea className="draft-edit" value={text} onChange={e => setText(e.target.value)} rows={12} spellCheck={false} aria-label="Edit draft JSON" />
         : <DraftView draft={a.draft} />}
@@ -102,12 +103,21 @@ function ApprovalCard({ a, onChange }: { a: Approval; onChange: () => void }) {
           {editing && <button className="btn ghost" onClick={() => setEditing(false)}>Cancel</button>}
         </footer>
       ) : <footer className="verdict">{a.status}{a.result ? ` — ${a.result}` : ''}</footer>}
+      {gen && <>
+        <p className="verdict">generation #{gen.id}: {gen.status.replace('_', ' ')}{gen.mock ? ' (mock)' : ''}{gen.error ? ` — ${gen.error}` : ''}</p>
+        {gen.local_path && <DraftView draft={{ result: gen.local_path }} />}
+        {['submitting', 'queued', 'in_progress'].includes(gen.status) && (
+          <footer className="actions">
+            <button className="btn reject" disabled={busy} onClick={() => act(() => post(`/api/generations/${gen.id}/cancel`))}>{busy ? 'Cancelling…' : 'Cancel generation'}</button>
+          </footer>
+        )}
+      </>}
       {error && <p className="error" role="alert">{error}</p>}
     </article>
   );
 }
 
-export function ApprovalQueue({ approvals, onChange }: { approvals: Approval[]; onChange: () => void }) {
+export function ApprovalQueue({ approvals, generations = [], onChange }: { approvals: Approval[]; generations?: Generation[]; onChange: () => void }) {
   const [showDone, setShowDone] = useState(false);
   const pending = approvals.filter(a => a.status === 'pending');
   const list = showDone ? approvals.filter(a => a.status !== 'pending').slice(0, 15) : pending;
@@ -115,7 +125,7 @@ export function ApprovalQueue({ approvals, onChange }: { approvals: Approval[]; 
     <Panel title="Approval Queue" className="approvals"
       extra={<button className="link" onClick={() => setShowDone(s => !s)}>{showDone ? `pending (${pending.length})` : 'decided'}</button>}>
       {list.length === 0 && <p className="empty">{showDone ? 'No decisions yet.' : 'Nothing waiting on you.'}</p>}
-      {list.map(a => <ApprovalCard key={a.id} a={a} onChange={onChange} />)}
+      {list.map(a => <ApprovalCard key={a.id} a={a} gen={generations.find(g => g.approval_id === a.id)} onChange={onChange} />)}
     </Panel>
   );
 }

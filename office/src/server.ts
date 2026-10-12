@@ -3,6 +3,7 @@ import { z } from 'zod';
 import * as db from './db.ts';
 import { brainRead, brainWrite, brainSearch } from './brain.ts';
 import * as media from './media.ts';
+import * as hf from './higgsfield.ts';
 import { createServer } from './mcp.ts';
 
 const { tool, start } = createServer('office');
@@ -50,5 +51,16 @@ tool('media_resize', 'Resize/crop a video to 9x16, 1x1 or 16x9.', { input: file,
 tool('media_music_list', 'List licensed tracks in the office music library with mood tags.', {}, () => media.musicList());
 tool('media_add_music', 'Lay a library track under a video (default -18 dB).', { input: file, track: file, volume_db: z.number().default(-18), out: z.string().optional() },
   a => media.addMusic(a.input, a.track, a.volume_db, a.out));
+
+// AI generation (Higgsfield). Agents can browse, price and REQUEST; only the owner's Approve submits and pays.
+tool('generation_models', 'List Higgsfield AI image/video models with input schema, verified flag, source doc and price per second.',
+  { kind: z.enum(['text-to-video', 'image-to-video', 'reference-to-video', 'text-to-image']).optional() }, a => hf.catalog(a.kind));
+tool('generation_request', 'Request ONE paid AI generation (one shot). Validates the input, estimates the cost and files a "purchase" approval; nothing is generated or paid until the owner approves. Reference images/videos: put media/... paths in the model\'s *_url fields. Returns the approval id.',
+  { agent, model: z.string().describe('Catalog id (e.g. "kling-3.0-turbo-i2v") or a model path from docs.higgsfield.ai'),
+    input: z.record(z.string(), z.any()).describe('Model input JSON, e.g. {"prompt": "...", "image_url": "media/out/still.png", "duration": 5}'),
+    why: z.string().describe('What this shot is for'), title: z.string().optional(), task_id: z.number().int().optional() },
+  a => hf.requestGeneration(a));
+tool('generation_status', 'List AI generations and their status (submitting/queued/in_progress/completed/failed/nsfw/canceled/unknown/not_submitted); local_path is the downloaded file in media/out.',
+  { status: z.string().optional(), limit: z.number().int().default(30) }, a => db.generationList(a));
 
 await start();

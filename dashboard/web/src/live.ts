@@ -7,7 +7,8 @@ export type Task = { id: number; team: string; agent: string; title: string; sta
 export type Approval = { id: number; kind: string; team: string; agent: string; title: string; draft: Record<string, any>; reason: string; status: string; result?: string; created_at: string; decided_at?: string; task_id?: number };
 export type OfficeEvent = { id: number; ts: string; type: string; agent?: string; team?: string; tool?: string; label?: string; session?: string; instance?: string; data?: string };
 export type Integration = { name: string; mode: 'live' | 'mock'; missing: string[]; liveSupported: boolean };
-export type State = { teams: Team[]; agents: AgentInfo[]; tasks: Task[]; approvals: Approval[]; integrations: Integration[] };
+export type Generation = { id: number; approval_id: number; model_path: string; status: string; est_usd: number; mock: boolean; request_id?: string; local_path?: string; error?: string; updated_at: string };
+export type State = { teams: Team[]; agents: AgentInfo[]; tasks: Task[]; approvals: Approval[]; generations: Generation[]; integrations: Integration[] };
 export type Instance = { id: string; agent: string; label: string; tool?: string; last: number; session?: string };
 export type Pulse = { id: number; team: string; write: boolean; at: number };
 
@@ -58,7 +59,7 @@ export function useOffice() {
     const newPulses: Pulse[] = [];
     for (const e of events) {
       applyEvent(inst.current, e);
-      if (e.type === 'task' || e.type === 'approval') touched = true;
+      if (e.type === 'task' || e.type === 'approval' || e.type === 'generation') touched = true;
       if (live && e.type === 'tool_start' && e.tool?.includes('brain_'))
         newPulses.push({ id: e.id, team: e.team ?? 'chief', write: e.tool.endsWith('brain_write'), at: Date.now() });
     }

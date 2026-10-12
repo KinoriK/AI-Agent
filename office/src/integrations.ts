@@ -22,8 +22,9 @@ const KEYS: Record<string, string[]> = {
   shop: ['SHOP_API_KEY'], // shortcut: shop & analytics are mock-only; add a real adapter when a store/analytics platform is chosen
   analytics: ['ANALYTICS_API_KEY'],
   whisper: ['OPENAI_API_KEY'],
+  higgsfield: ['HF_API_KEY'],
 };
-const LIVE_ADAPTERS = new Set(['github', 'drive', 'calendar', 'gmail', 'slack', 'whisper']);
+const LIVE_ADAPTERS = new Set(['github', 'drive', 'calendar', 'gmail', 'slack', 'whisper', 'higgsfield']);
 export const isLive = (name: string) => LIVE_ADAPTERS.has(name) && KEYS[name].every(k => process.env[k]);
 export const integrationStatus = () => Object.entries(KEYS).map(([name, keys]) => ({
   name, mode: isLive(name) ? 'live' : 'mock', missing: keys.filter(k => !process.env[k]), liveSupported: LIVE_ADAPTERS.has(name),
@@ -231,10 +232,12 @@ async function slackPost(text: string) {
 }
 
 // ---------- Executor: runs ONLY after the owner approves in the dashboard ----------
-export async function execute(a: { id: number; kind: string; title: string; draft: any }): Promise<string> {
+export async function execute(a: { id: number; kind: string; title: string; agent?: string; draft: any }): Promise<string> {
   const d = a.draft;
   let result: string;
-  if ((a.kind === 'post' || a.kind === 'schedule') && isLive('calendar') && d.time) {
+  if (a.kind === 'purchase' && d.provider === 'higgsfield') {
+    result = await (await import('./higgsfield.ts')).executeGeneration(a as any); // lazy: the other MCP servers never open the DB
+  } else if ((a.kind === 'post' || a.kind === 'schedule') && isLive('calendar') && d.time) {
     const start = new Date(d.time);
     await google('https://www.googleapis.com/calendar/v3/calendars/primary/events', { method: 'POST', body: JSON.stringify({
       summary: `Publish: ${a.title}`, description: `${d.platform ?? ''}\n\n${d.text ?? JSON.stringify(d, null, 2)}`,

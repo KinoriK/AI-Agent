@@ -6,6 +6,7 @@ const LABELS: Record<string, string> = {
   media_probe: 'inspecting footage', media_frame: 'studying a frame', media_cut: 'cutting the clip', media_transcribe: 'transcribing audio',
   media_burn_captions: 'burning captions', media_thumbnail: 'drawing a thumbnail', media_resize: 'resizing video',
   media_music_list: 'browsing the music library', media_add_music: 'laying in music',
+  generation_models: 'browsing AI video models', generation_request: 'pricing an AI shot', generation_status: 'checking AI renders',
   search_repositories: 'searching GitHub', get_repo: 'sizing up a repo', get_readme: 'reading a README',
   drive_list_files: 'checking Drive', drive_download: 'pulling clips from Drive',
   calendar_list_events: 'reading the calendar', calendar_free_slots: 'finding a time slot',

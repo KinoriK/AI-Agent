@@ -32,7 +32,7 @@ export function App() {
         </div>
         <aside className="side">
           {room ? <RoomPanel team={room} state={state} onClose={() => setRoom(undefined)} /> : <TaskBoard tasks={state.tasks} />}
-          <ApprovalQueue approvals={state.approvals} onChange={refresh} />
+          <ApprovalQueue approvals={state.approvals} generations={state.generations} onChange={refresh} />
         </aside>
       </main>
       <CommandBar reports={reports} />

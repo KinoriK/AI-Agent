@@ -34,6 +34,14 @@ CREATE TABLE IF NOT EXISTS events (
   ts TEXT NOT NULL, type TEXT NOT NULL, agent TEXT, team TEXT,
   tool TEXT, label TEXT, session TEXT, instance TEXT, data TEXT
 );
+-- Paid AI generations (Higgsfield). UNIQUE approval_id: one approval can never submit twice.
+CREATE TABLE IF NOT EXISTS generations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  approval_id INTEGER NOT NULL UNIQUE, agent TEXT NOT NULL, model_path TEXT NOT NULL, input TEXT NOT NULL,
+  request_id TEXT, status TEXT NOT NULL, est_usd REAL NOT NULL DEFAULT 0, mock INTEGER NOT NULL DEFAULT 0, idem_key TEXT,
+  result_url TEXT, local_path TEXT, error TEXT,
+  created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+);
 `);
 
 const now = () => new Date().toISOString();
@@ -116,4 +124,31 @@ export function approvalDecide(id: number, status: 'approved' | 'rejected', patc
 
 export function approvalSetResult(id: number, result: string) {
   db.prepare('UPDATE approvals SET result=? WHERE id=?').run(result, id);
+}
+
+// Generations: created only by the approval executor; status changes are logged so the dashboard updates live.
+const genRow = (g: Row) => ({ ...g, input: JSON.parse(g.input), mock: !!g.mock });
+export function generationGet(id: number): Row {
+  const g = db.prepare('SELECT * FROM generations WHERE id = ?').get(id) as Row | undefined;
+  if (!g) throw new Error(`generation ${id} not found`);
+  return genRow(g);
+}
+export function generationCreate(g: { approval_id: number; agent: string; model_path: string; input: unknown; status: string; est_usd: number; mock: boolean; idem_key?: string }) {
+  if (db.prepare('SELECT 1 FROM generations WHERE approval_id = ?').get(g.approval_id)) throw new Error(`approval ${g.approval_id} already has a generation; not submitting twice`);
+  const r = db.prepare('INSERT INTO generations (approval_id,agent,model_path,input,status,est_usd,mock,idem_key,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
+    .run(g.approval_id, g.agent, g.model_path, JSON.stringify(g.input), g.status, g.est_usd, g.mock ? 1 : 0, g.idem_key ?? null, now(), now());
+  const item = generationGet(Number(r.lastInsertRowid));
+  logEvent({ type: 'generation', agent: g.agent, label: `${g.status}: ${g.model_path}`, data: item });
+  return item;
+}
+export function generationUpdate(id: number, patch: { status?: string; request_id?: string; result_url?: string; local_path?: string; error?: string | null }) {
+  const g = { ...generationGet(id), ...Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)) };
+  db.prepare('UPDATE generations SET status=?, request_id=?, result_url=?, local_path=?, error=?, updated_at=? WHERE id=?')
+    .run(g.status, g.request_id ?? null, g.result_url ?? null, g.local_path ?? null, g.error ?? null, now(), id);
+  const item = generationGet(id);
+  logEvent({ type: 'generation', agent: item.agent, label: `${item.status}: ${item.model_path}`, data: item });
+  return item;
+}
+export function generationList(f: { status?: string; limit?: number } = {}): Row[] {
+  return (db.prepare('SELECT * FROM generations WHERE (?1 IS NULL OR status = ?1) ORDER BY id DESC LIMIT ?2').all(f.status ?? null, f.limit ?? 50) as Row[]).map(genRow);
 }
